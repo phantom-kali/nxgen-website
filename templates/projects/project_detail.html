@@ -1,40 +1,209 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ project.title }} | Project Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .project-header {
+        position: relative;
+        background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                    url('{% if project.image %}{{ project.image.url }}{% else %}https://via.placeholder.com/1200x400?text=Project+Image{% endif %}');
+        background-position: center;
+        background-size: cover;
+        color: white;
+        padding: 4rem 0;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .project-meta-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+    }
+    
+    .project-meta-icon {
+        width: 40px;
+        height: 40px;
+        background-color: rgba(13, 110, 253, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        color: #0d6efd;
+        flex-shrink: 0;
+        font-size: 1.25rem;
+    }
+    
+    .readme-container {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin: 2rem 0;
+    }
+    
+    .comment-section {
+        margin-top: 3rem;
+    }
+    
+    .comment {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.375rem;
+        background-color: #f8f9fa;
+    }
+    
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+    
+    .comment-author {
+        font-weight: 600;
+    }
+    
+    .comment-time {
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+    
+    .tech-badge {
+        display: inline-block;
+        font-size: 0.875rem;
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
-    <h2>{{ project.title }}</h2>
+    <!-- Project Header -->
+    <div class="project-header text-center">
+        <div class="container position-relative">
+            <h1 class="display-4 fw-bold mb-3">{{ project.title }}</h1>
+            <div class="d-flex justify-content-center flex-wrap mb-4">
+                {% for tech in project.tech_stack.split %}
+                    <span class="badge bg-primary me-2 mb-2">{{ tech }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Project Description -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">About This Project</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">{{ project.description }}</p>
+                </div>
+            </div>
 
-    {% if project.image %}
-        <img src="{{ project.image.url }}" class="img-fluid mb-3" alt="{{ project.title }}">
-    {% elif project.github_link %}
-        <img src="https://github.com/{{ project.github_link|cut:'https://github.com/' }}.png" class="img-fluid mb-3" alt="GitHub Profile">
-    {% else %}
-        <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" class="img-fluid mb-3" alt="Default GitHub Image">
-    {% endif %}
+            <!-- Display README.md Content -->
+            {% if readme_content %}
+                <div class="card mb-4">
+                    <div class="card-header d-flex align-items-center">
+                        <i class="fas fa-book me-2"></i>
+                        <h5 class="mb-0">README</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="readme-container">{{ readme_content|safe }}</div>
+                    </div>
+                </div>
+            {% endif %}
 
-    
+            <!-- Comment Section -->
+            <div class="card">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-comments me-2"></i>
+                    <h5 class="mb-0">Comments</h5>
+                </div>
+                <div class="card-body">
+                    {% if comments %}
+                        <ul class="list-unstyled">
+                            {% for comment in comments %}
+                                <li class="comment">
+                                    <div class="comment-header">
+                                        <div class="comment-author">{{ comment.user }}</div>
+                                        <div class="comment-time">{{ comment.created_at|date:"M j, Y g:i A" }}</div>
+                                    </div>
+                                    <div class="comment-content">
+                                        {{ comment.content }}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-comments fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">No comments yet. Be the first to comment!</p>
+                        </div>
+                    {% endif %}
 
-    <p><strong>Description:</strong> {{ project.description }}</p>
-    <p><strong>Tech Stack:</strong> {{ project.tech_stack }}</p>
-    <p><strong>GitHub:</strong> <a href="{{ project.github_link }}" target="_blank">View on GitHub</a></p>
+                    <!-- Comment Form -->
+                    <div class="comment-form mt-4">
+                        <h5 class="mb-3">Add a Comment</h5>
+                        <form method="post" action="{% url 'projects:add_comment' project.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                {{ form.content.label_tag }}
+                                {{ form.content }}
+                                {% if form.content.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.content.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i> Post Comment
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Display README.md Content -->
-    {% if readme_content %}
-        <h3>📖 Project README</h3>
-        <div class="border p-3 bg-light">{{ readme_content|safe }}</div>
-    {% endif %}
+        <!-- Project Sidebar -->
+        <div class="col-lg-4">
+            <div class="card sticky-lg-top" style="top: 2rem; z-index: 1;">
+                <div class="card-body">
+                    <!-- Project Metadata -->
+                    <div class="project-meta-item">
+                        <div class="project-meta-icon">
+                            <i class="fab fa-github"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">GitHub Repository</h6>
+                            <a href="{{ project.github_link }}" class="btn btn-sm btn-outline-primary mt-1" target="_blank">
+                                <i class="fas fa-external-link-alt me-1"></i> View on GitHub
+                            </a>
+                        </div>
+                    </div>
 
-    <h3>💬 Comments</h3>
-    <ul>
-        {% for comment in comments %}
-            <li>{{ comment.user }}: {{ comment.content }}</li>
-        {% endfor %}
-    </ul>
-
-    <form method="post" action="{% url 'projects:add_comment' project.id %}">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Add Comment</button>
-    </form>
+                    <div class="project-meta-item">
+                        <div class="project-meta-icon">
+                            <i class="fas fa-laptop-code"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Tech Stack</h6>
+                            <div class="d-flex flex-wrap mt-1">
+                                {% for tech in project.tech_stack.split %}
+                                    <span class="tech-badge">{{ tech }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
